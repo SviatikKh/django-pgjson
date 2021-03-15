@@ -10,8 +10,8 @@ import psycopg2.extensions
 import psycopg2.extras
 
 from django import forms
+from django.db import connection
 from django.db import models
-from django.db.backends.postgresql_psycopg2.version import get_version
 from django.conf import settings
 from django.utils import six
 
@@ -54,7 +54,7 @@ class JsonField(base_field_class):
         super(JsonField, self).__init__(*args, **kwargs)
 
     def db_type(self, connection):
-        if get_version(connection) < 90200:
+        if connection.cursor().connection.server_version < 90200:
             raise RuntimeError("django_pgjson does not supports postgresql version < 9.2")
         return "json"
 
@@ -113,7 +113,7 @@ class JsonField(base_field_class):
 
 class JsonBField(JsonField):
     def db_type(self, connection):
-        if get_version(connection) < 90400:
+        if connection.cursor().connection.server_version < 90400:
             raise RuntimeError("django_pgjson: PostgreSQL >= 9.4 is required for jsonb support.")
         return "jsonb"
 
