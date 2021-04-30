@@ -59,7 +59,7 @@ class JsonField(base_field_class):
         return "json"
 
     def value_to_string(self, obj):
-        value = self._get_val_from_obj(obj)
+        value = self.value_from_object(obj)
         return json.dumps(self.get_prep_value(value), cls=get_encoder_class(), **self._options)
 
     def get_default(self):
