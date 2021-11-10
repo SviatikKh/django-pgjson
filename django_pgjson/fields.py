@@ -11,6 +11,7 @@ import psycopg2.extensions
 import psycopg2.extras
 
 from django import forms
+from django.db import connection
 from django.db import models
 from django.db.backends.postgresql.base import psycopg2_version
 from django.conf import settings
@@ -59,7 +60,7 @@ class JsonField(base_field_class):
         return "json"
 
     def value_to_string(self, obj):
-        value = self._get_val_from_obj(obj)
+        value = self.value_from_object(obj)
         return json.dumps(self.get_prep_value(value), cls=get_encoder_class(), **self._options)
 
     def get_default(self):
