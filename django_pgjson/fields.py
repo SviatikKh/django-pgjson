@@ -5,6 +5,7 @@ import re
 import django
 import copy
 
+import six
 import psycopg2
 import psycopg2.extensions
 import psycopg2.extras
@@ -12,8 +13,8 @@ import psycopg2.extras
 from django import forms
 from django.db import connection
 from django.db import models
+from django.db.backends.postgresql.base import psycopg2_version
 from django.conf import settings
-from django.utils import six
 
 if django.VERSION >= (1, 7):
     from django.utils.module_loading import import_string
@@ -54,7 +55,7 @@ class JsonField(base_field_class):
         super(JsonField, self).__init__(*args, **kwargs)
 
     def db_type(self, connection):
-        if connection.cursor().connection.server_version < 90200:
+        if psycopg2_version(connection) < 90200:
             raise RuntimeError("django_pgjson does not supports postgresql version < 9.2")
         return "json"
 
@@ -70,7 +71,7 @@ class JsonField(base_field_class):
         return None
 
     def to_python(self, value):
-        if isinstance(value, six.string_types):
+        if isinstance(value, str):
             try:
                 value = json.loads(value)
             except ValueError:
@@ -113,7 +114,7 @@ class JsonField(base_field_class):
 
 class JsonBField(JsonField):
     def db_type(self, connection):
-        if connection.cursor().connection.server_version < 90400:
+        if psycopg2_version(connection) < 90400:
             raise RuntimeError("django_pgjson: PostgreSQL >= 9.4 is required for jsonb support.")
         return "jsonb"
 
@@ -126,17 +127,17 @@ class JsonBField(JsonField):
 
         """
         if lookup_type in ["jcontains"]:
-            if not isinstance(value, six.string_types):
+            if not isinstance(value, str):
                 value = json.dumps(value, cls=get_encoder_class(), **self._options)
         if lookup_type in ["jhas_any", "jhas_all"]:
-            if isinstance(value, six.string_types):
+            if isinstance(value, str):
                 value = [value]
             # Quickly coerce the following:
             #   any iterable to array
             #   non-string values to strings
             value = ["%s" % v for v in value]
-        elif lookup_type in ["jhas"] and not isinstance(value, six.string_types):
-            if isinstance(value, six.integer_types):
+        elif lookup_type in ["jhas"] and not isinstance(value, str):
+            if isinstance(value, int):
                 value = str(value)
             else:
                 raise TypeError("jhas lookup requires str or int")
@@ -162,7 +163,7 @@ class JsonFormField(forms.CharField):
     widget = forms.Textarea
 
     def prepare_value(self, value):
-        if isinstance(value, six.string_types):
+        if isinstance(value, str):
             return value
         return json.dumps(value, cls=get_encoder_class())
 
