@@ -77,7 +77,7 @@ class JsonField(base_field_class):
                 pass
         return value
 
-    def from_db_value(self, value, expression, connection, context):
+    def from_db_value(self, value, expression=None, connection=None, context=None):
         return self.to_python(value)
 
     def formfield(self, **kwargs):
