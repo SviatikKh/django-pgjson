@@ -11,9 +11,10 @@ import psycopg2.extras
 
 from django import forms
 from django.db import models
-from django.db.backends.postgresql_psycopg2.version import get_version
+from django.db.backends.postgresql.base import psycopg2_version
 from django.conf import settings
-from django.utils import six
+
+from future.utils import with_metaclass
 
 if django.VERSION >= (1, 7):
     from django.utils.module_loading import import_string
@@ -41,7 +42,7 @@ psycopg2.extras.register_json(loads=json.loads, oid=3802, array_oid=3807)
 
 
 if django.VERSION < (1, 8):
-    base_field_class = six.with_metaclass(models.SubfieldBase, models.Field)
+    base_field_class = with_metaclass(models.SubfieldBase, models.Field)
 else:
     base_field_class = models.Field
 
@@ -53,13 +54,13 @@ class JsonField(base_field_class):
         self._options = kwargs.pop("options", {})
         super(JsonField, self).__init__(*args, **kwargs)
 
-    def db_type(self, connection):
-        if get_version(connection) < 90200:
+    def db_type(self):
+        if psycopg2_version < 90200:
             raise RuntimeError("django_pgjson does not supports postgresql version < 9.2")
         return "json"
 
     def value_to_string(self, obj):
-        value = self._get_val_from_obj(obj)
+        value = self.value_from_object(obj)
         return json.dumps(self.get_prep_value(value), cls=get_encoder_class(), **self._options)
 
     def get_default(self):
@@ -70,7 +71,7 @@ class JsonField(base_field_class):
         return None
 
     def to_python(self, value):
-        if isinstance(value, six.string_types):
+        if isinstance(value, str):
             try:
                 value = json.loads(value)
             except ValueError:
@@ -112,8 +113,8 @@ class JsonField(base_field_class):
 
 
 class JsonBField(JsonField):
-    def db_type(self, connection):
-        if get_version(connection) < 90400:
+    def db_type(self):
+        if psycopg2_version < 90400:
             raise RuntimeError("django_pgjson: PostgreSQL >= 9.4 is required for jsonb support.")
         return "jsonb"
 
@@ -126,17 +127,17 @@ class JsonBField(JsonField):
 
         """
         if lookup_type in ["jcontains"]:
-            if not isinstance(value, six.string_types):
+            if not isinstance(value, str):
                 value = json.dumps(value, cls=get_encoder_class(), **self._options)
         if lookup_type in ["jhas_any", "jhas_all"]:
-            if isinstance(value, six.string_types):
+            if isinstance(value, str):
                 value = [value]
             # Quickly coerce the following:
             #   any iterable to array
             #   non-string values to strings
             value = ["%s" % v for v in value]
-        elif lookup_type in ["jhas"] and not isinstance(value, six.string_types):
-            if isinstance(value, six.integer_types):
+        elif lookup_type in ["jhas"] and not isinstance(value, str):
+            if isinstance(value, int):
                 value = str(value)
             else:
                 raise TypeError("jhas lookup requires str or int")
@@ -162,7 +163,7 @@ class JsonFormField(forms.CharField):
     widget = forms.Textarea
 
     def prepare_value(self, value):
-        if isinstance(value, six.string_types):
+        if isinstance(value, str):
             return value
         return json.dumps(value, cls=get_encoder_class())
 
