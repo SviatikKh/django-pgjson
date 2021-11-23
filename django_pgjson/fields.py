@@ -5,16 +5,19 @@ import re
 import django
 import copy
 
+import six
 import psycopg2
 import psycopg2.extensions
 import psycopg2.extras
 
 from django import forms
+from django.db import connection
 from django.db import models
 from django.db.backends.postgresql.base import psycopg2_version
 from django.conf import settings
 
 from future.utils import with_metaclass
+
 
 if django.VERSION >= (1, 7):
     from django.utils.module_loading import import_string
@@ -53,6 +56,7 @@ class JsonField(base_field_class):
     def __init__(self, *args, **kwargs):
         self._options = kwargs.pop("options", {})
         super(JsonField, self).__init__(*args, **kwargs)
+
 
     def db_type(self):
         if psycopg2_version < 90200:
