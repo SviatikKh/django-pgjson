@@ -16,6 +16,9 @@ from django.db import models
 from django.db.backends.postgresql.base import psycopg2_version
 from django.conf import settings
 
+from future.utils import with_metaclass
+
+
 if django.VERSION >= (1, 7):
     from django.utils.module_loading import import_string
 else:
@@ -42,7 +45,7 @@ psycopg2.extras.register_json(loads=json.loads, oid=3802, array_oid=3807)
 
 
 if django.VERSION < (1, 8):
-    base_field_class = six.with_metaclass(models.SubfieldBase, models.Field)
+    base_field_class = with_metaclass(models.SubfieldBase, models.Field)
 else:
     base_field_class = models.Field
 
@@ -54,8 +57,9 @@ class JsonField(base_field_class):
         self._options = kwargs.pop("options", {})
         super(JsonField, self).__init__(*args, **kwargs)
 
-    def db_type(self, connection):
-        if psycopg2_version(connection) < 90200:
+
+    def db_type(self):
+        if psycopg2_version < 90200:
             raise RuntimeError("django_pgjson does not supports postgresql version < 9.2")
         return "json"
 
@@ -78,7 +82,7 @@ class JsonField(base_field_class):
                 pass
         return value
 
-    def from_db_value(self, value, expression, connection, context):
+    def from_db_value(self, value, expression=None, connection=None, context=None):
         return self.to_python(value)
 
     def formfield(self, **kwargs):
@@ -113,8 +117,8 @@ class JsonField(base_field_class):
 
 
 class JsonBField(JsonField):
-    def db_type(self, connection):
-        if psycopg2_version(connection) < 90400:
+    def db_type(self):
+        if psycopg2_version < 90400:
             raise RuntimeError("django_pgjson: PostgreSQL >= 9.4 is required for jsonb support.")
         return "jsonb"
 
